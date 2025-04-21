@@ -1,0 +1,139 @@
+---
+- name: Gather the ip address of etcd interface
+  ansible.builtin.set_fact:
+    monitoring_node_ip:  '{{ ansible_facts[monitoring_node_iface].ipv4.address }}'
+  tags:
+    - grafana
+
+- name: Deploy prometheus systemd unit file 
+  ansible.builtin.template:
+    src: prometheus.service.j2
+    dest: '{{ prometheus_systemd_unit_file }}'
+    mode: '0644'
+  notify: Restart prometheus service 
+
+- name: Deploy alertmanager systemd unit file 
+  ansible.builtin.template:
+    src: alertmanager.service.j2
+    dest: '{{ alertmanager_systemd_unit_file }}'
+    mode: '0644'
+  notify: Restart prometheus service 
+
+- name: Deploy grafana systemd unit file 
+  ansible.builtin.template:
+    src: grafana.service.j2
+    dest: '{{ grafana_systemd_unit_file }}'
+    mode: '0644'
+  notify: Restart grafana service 
+
+- name: Deploy prometheus configuration 
+  ansible.builtin.template:
+    src: prometheus.yml.j2
+    dest: '{{ prometheus_config_dir }}/prometheus.yml'
+    mode: '0644'
+    owner: '{{ prometheus_user }}'
+    group: '{{ prometheus_group }}'
+  notify: Restart prometheus service
+  tags:
+    - prom 
+
+- name: Deploy  node-exporter systemd unit file 
+  ansible.builtin.template:
+    src: node-exporter.service.j2
+    dest: '{{ node_exporter_systemd_unit_file }}'
+    mode: '0644'
+  notify: Restart node-exporter service 
+  tags:
+    - node_exporter 
+
+- name: Deploy alertmanager configuration 
+  ansible.builtin.template:
+    src: alertmanager.yml.j2
+    dest: '{{ alertmanager_config_dir }}/alertmanager.yml'
+    mode: '0644'
+    owner: '{{ alertmanager_user }}'
+    group: '{{ alertmanager_group }}'
+  notify: Restart alertmanager service 
+
+- name: Deploy grafana configuration 
+  ansible.builtin.template:
+    src: grafana.ini.j2
+    dest: '{{ grafana_config_dir }}/grafana.ini'
+    mode: '0644'
+    owner: '{{ grafana_user }}'
+    group: '{{ grafana_group }}'
+  notify: Restart grafana service 
+
+- name: Deploy grafana provisioning data source configuration 
+  ansible.builtin.template:
+    src: provisioning/prom.yaml.j2
+    dest: '{{ grafana_config_dir }}/provisioning/datasources/prom.yaml'
+    mode: '0644'
+    owner: '{{ grafana_user }}'
+    group: '{{ grafana_group }}'
+  tags:
+    - grafana
+
+- name: Deploy grafana provisioning dashboard configuration 
+  ansible.builtin.template:
+    src: provisioning/default.yaml.j2
+    dest: '{{ grafana_config_dir }}/provisioning/dashboards/default.yaml'
+    mode: '0644'
+    owner: '{{ grafana_user }}'
+    group: '{{ grafana_group }}'
+  tags:
+    - grafana
+
+- name: Deploy grafana provisioning dashboards 
+  ansible.builtin.copy:
+    src: '{{ item }}'
+    dest: '{{ grafana_provisioning_dashboard_folder }}/{{ item }}'
+    mode: '0644'
+    owner: '{{ grafana_user }}'
+    group: '{{ grafana_group }}'
+  loop:
+    - node-exporter-full.json
+    - etcd.json
+  tags:
+    - grafana
+
+- name: Deploy prometheus rule files 
+  ansible.builtin.template:
+    src: prometheus.yml.j2
+    dest: '{{ prometheus_config_dir }}/{{ item }}'
+    mode: '0644'
+    owner: '{{ prometheus_user }}'
+    group: '{{ prometheus_group }}'
+  loop:
+    '{{ prometheus_rules }}'
+  notify: Restart prometheus service
+
+
+- name: Install nginx server
+  package: 
+    name: nginx  
+    state: present
+
+- name: Prepare for nginx basic authentication
+  ansible.builtin.copy:
+    content: '{{ nginx_basic_auth_http_value }}'
+    dest:  '{{ nginx_basic_auth_file }}'
+    owner: root
+    group: root
+  tags:
+    - nginx
+
+- name: Configure nginx to serve as reverse proxy for monitoring
+  ansible.builtin.template:
+    src: nginx-monitoring.j2 
+    dest:  '/etc/nginx/sites-enabled/{{ nginx_site.config_name }}'
+    mode: '0644'
+    owner: root
+    group: root
+  notify:  Restart nginx service
+  loop:
+   '{{ nginx_monitoring_sites }}'
+  loop_control:
+    loop_var: nginx_site
+  tags:
+    - nginx

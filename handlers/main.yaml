@@ -1,0 +1,34 @@
+---
+- name: Restart prometheus service
+  ansible.builtin.systemd:
+    name: prometheus
+    daemon_reload: true
+    state: restarted
+    enabled: true
+    
+- name: Restart alertmanager service
+  ansible.builtin.systemd:
+    name: alertmanager
+    daemon_reload: true
+    state: restarted
+    enabled: true
+
+- name: Restart grafana service
+  ansible.builtin.systemd:
+    name: grafana
+    daemon_reload: true
+    state: restarted
+    enabled: true
+
+- name: Restart nginx service
+  ansible.builtin.systemd:
+    name: nginx
+    state: restarted
+    enabled: true
+
+- name: Restart node-exporter service
+  ansible.builtin.systemd:
+    name: node-exporter
+    daemon_reload: true
+    state: restarted
+    enabled: true

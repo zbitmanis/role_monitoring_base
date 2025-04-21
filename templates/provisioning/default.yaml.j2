@@ -1,0 +1,9 @@
+apiVersion: 1
+providers: 
+  - name: 'etcd'
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+        path: {{ grafana_dashboards_folder }} 
+        foldersFromFilesStructure: true
+    type: file
