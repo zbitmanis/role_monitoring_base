@@ -1,0 +1,57 @@
+
+server {
+    listen 80;
+
+    server_name  {{ nginx_site.server_name }};
+    {% if nginx_enable_tls %}
+    return 301 "https://$host$request_uri";
+    {% else %}
+        server_name  {{ nginx_site.server_name }};
+        root _;
+        
+        location / {
+        proxy_pass {{ nginx_site.backend }};
+        
+        {% if nginx_site.basic_auth is defined and nginx_site.basic_auth  %}
+        auth_basic           "Area - 51: restricted access";
+        auth_basic_user_file {{ nginx_basic_auth_file }};
+
+        {% endif %}
+
+        proxy_set_header Accept-Encoding "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        }
+
+    {% endif %}
+}
+
+{% if nginx_enable_tls %}
+server {
+        listen 443 ssl;
+        server_name  {{ nginx_site.server_name }};
+        ssl_certificate  {{ nginx_site.ssl_certificate }}; 
+        ssl_certificate_key {{ nginx_site.ssl_certificate_key }}; 
+        root _;
+
+        location / {
+        proxy_pass {{ nginx_site.backend }};
+        
+        {% if nginx_site.basic_auth is defined and nginx_site.basic_auth  %}
+        auth_basic           "Area - 51: restricted access";
+        auth_basic_user_file {{ nginx_basic_auth_file }};
+
+        {% endif %}
+
+        proxy_set_header Accept-Encoding "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        }
+}
+{% endif %}

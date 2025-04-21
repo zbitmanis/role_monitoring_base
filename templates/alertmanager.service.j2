@@ -1,0 +1,28 @@
+# container-alertmanager.service
+
+[Unit]
+Description=alertmanager
+Documentation=https://alertmanager.io
+Wants=network-online.target
+After=network-online.target
+RequiresMountsFor=%t/containers
+
+[Service]
+Environment=PODMAN_SYSTEMD_UNIT=%n
+Environment=ALERTMANAGER_DIR={{ alertmanager_dir }}
+Environment=ALERTMANAGER_CONFIG_DIR={{ alertmanager_config_dir }}
+Environment=ALERTMANAGER_RELEASE={{ alertmanager_release }}
+Environment=ALERTMANAGER_UID={{ alertmanager_uid }}
+
+Restart=on-failure
+TimeoutStopSec=70
+ExecStartPre=/bin/rm -f %t/%n.ctr-id
+ExecStart=/usr/bin/podman run --cidfile=%t/%n.ctr-id --cgroups=no-conmon --rm --sdnotify=conmon --replace -p 9093:9093 --user ${ALERTMANAGER_UID} -d -v ${ALERTMANAGER_DIR}:/alertmanager -v ${ALERTMANAGER_CONFIG_DIR}:${ALERTMANAGER_CONFIG_DIR} --name alertmanager quay.io/prometheus/alertmanager:${ALERTMANAGER_RELEASE} --cluster.advertise-address=0.0.0.0:9093 --config.file ${ALERTMANAGER_CONFIG_DIR}/alertmanager.yml 
+
+ExecStop=/usr/bin/podman stop --ignore --cidfile=%t/%n.ctr-id
+ExecStopPost=/usr/bin/podman rm -f --ignore --cidfile=%t/%n.ctr-id
+Type=notify
+NotifyAccess=all
+
+[Install]
+WantedBy=default.target

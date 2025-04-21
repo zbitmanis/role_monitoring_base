@@ -1,0 +1,11 @@
+apiVersion: 1
+
+datasources:
+- name: {{ prometheus_datasource_name | default ('etcd') }}
+  type: prometheus
+  access: proxy
+  orgId: 1
+  url: http://{{ monitoring_node_ip}}:9090
+  isDefault: true
+  version: 1
+  editable: false
