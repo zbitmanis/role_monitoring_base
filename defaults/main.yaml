@@ -14,6 +14,8 @@ grafana_release: 11.5.2
 grafana_admin_initial_password: '{{ vault_grafana_admin_initial_password }}'
 grafana_provisioning_dashboard_folder: /var/lib/grafana/dashboards 
 grafana_dashboards_folder: /grafana/dashboards 
+grafana_provisioning_dashboard_files:
+    - node-exporter-full.json
 prometheus_install_files_path: /var/tmp/prometheus-install
 prometheus_dir: /var/prometheus
 prometheus_config_dir: /etc/prometheus
@@ -22,31 +24,6 @@ prometheus_systemd_unit_file: /etc/systemd/system/prometheus.service
 alertmanager_systemd_unit_file: /etc/systemd/system/alertmanager.service
 grafana_systemd_unit_file: /etc/systemd/system/grafana.service
 monitoring_alertmanager_enabled: true
-nginx_basic_auth_file: /etc/nginx/.htpasswd
-nginx_basic_auth_http_value: '{{ vault_nginx_basic_auth_http_value }}'
-nginx_enable_tls: true
-nginx_tls_dir: /etc/nginx/tls
-nginx_monitoring_sites_domain: fogc.space
-nginx_monitoring_basic_auth: false
-nginx_monitoring_sites: 
-  - server_name: 'grafana.{{ nginx_ext_domain }}'
-    ssl_certificate: '{{ nginx_tls_dir }}/grafana.pem' 
-    ssl_certificate_key: '{{ nginx_tls_dir }}/grafana.key' 
-    backend: 'http://localhost:3000/' 
-    config_name: monitoring-grafana
-  - server_name: 'prometheus.{{ nginx_ext_domain }}'
-    ssl_certificate: '{{ nginx_tls_dir }}/prometheus.pem' 
-    ssl_certificate_key: '{{ nginx_tls_dir }}/prometheus.key' 
-    backend: 'http://localhost:9090/'
-    basic_auth: '{{ nginx_monitoring_basic_auth }}'
-    config_name: monitoring-prometheus
-  - server_name: 'alertmanager.{{ nginx_ext_domain }}'
-    ssl_certificate: '{{ nginx_tls_dir }}/alertmanager.pem' 
-    ssl_certificate_key: '{{ nginx_tls_dir }}/alertmanager.key' 
-    backend: 'http://localhost:9093/'
-    config_name: monitoring-prometheus
-    basic_auth: '{{ nginx_monitoring_basic_auth }}'
-    config_name: monitoring-alertmanager
 node_exporter_release: v1.9.0
 node_exporter_systemd_unit_file:  /etc/systemd/system/node-exporter.service
 prometheus_release: v3.2.0

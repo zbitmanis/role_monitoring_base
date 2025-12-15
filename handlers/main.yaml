@@ -20,12 +20,6 @@
     state: restarted
     enabled: true
 
-- name: Restart nginx service
-  ansible.builtin.systemd:
-    name: nginx
-    state: restarted
-    enabled: true
-
 - name: Restart node-exporter service
   ansible.builtin.systemd:
     name: node-exporter
