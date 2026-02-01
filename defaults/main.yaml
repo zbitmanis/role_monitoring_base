@@ -1,6 +1,5 @@
 ---
 alertmanager_recivers: []
-alertmanager_config_dir:
 alertmanager_release: v0.28.0
 alertmanager_dir: /var/lib/alertmanager
 alertmanager_config_dir: /etc/alertmanager
@@ -22,6 +21,7 @@ prometheus_config_dir: /etc/prometheus
 prometheus_tls_dir: /etc/prometheus/tls
 prometheus_systemd_unit_file: /etc/systemd/system/prometheus.service
 alertmanager_systemd_unit_file: /etc/systemd/system/alertmanager.service
+prometheus_storage_block_duration: 2h
 grafana_systemd_unit_file: /etc/systemd/system/grafana.service
 monitoring_alertmanager_enabled: true
 node_exporter_release: v1.9.0
@@ -36,3 +36,22 @@ prometheus_protocol: '{% if prometheus_enable_tls %}https{% else %}http{% endif 
 prometheus_ca_file: '{{ prometheus_tls_dir }}/etcd-ca.pem' 
 prometheus_cert_file: '{{ prometheus_tls_dir }}/prometheus.pem' 
 prometheus_key_file: '{{ prometheus_tls_dir }}/prometheus.key' 
+prometheus_external_labels: 
+  cluster: 'rpi'
+  replica: '0'
+prometheus_scrape_protocols:
+  - 'OpenMetricsText1.0.0'
+  - 'PrometheusText0.0.4'
+thanos_config_dir: /etc/thanos 
+thanos_data_dir: /var/thanos 
+thanos_compactor_systemd_unit_file: /etc/systemd/system/thanos-compactor.service
+thanos_objstore_file: '{{ thanos_config_dir }}/objstore.yaml' 
+thanos_systemd_unit_file: /etc/systemd/system/thanos.service
+thanos_store_systemd_unit_file: /etc/systemd/system/thanos-store.service
+thanos_query_systemd_unit_file: /etc/systemd/system/thanos-query.service
+thanos_aws_access_key: '{{ vault_thanos_aws_access_key }}' 
+thanos_aws_access_secret: '{{ vault_thanos_aws_access_secret }}'
+thanos_s3_bucket: 'rpi-thanos-metrics-s3-eu-central-1'
+thanos_user: '{{ prometheus_user }}'
+thanos_group: '{{ prometheus_group }}'
+thanos_release: 'v0.35.1'

@@ -5,26 +5,102 @@
   tags:
     - grafana
 
+- name: Create podman pod for prometheus and thanos
+  containers.podman.podman_pod:
+    name: '{{ monitoring_pod }}'
+    state: created
+    ports:
+      - "9090:9090" 
+      - "19191:19191" 
+      - "19090:19090"
+
+- name: Deploy thanos objstore file 
+  ansible.builtin.template:
+    src: objstore.yml.j2
+    dest: '{{ thanos_objstore_file }}'
+    mode: '0644'
+  notify: 
+    - Restart thanos service 
+
+- name: Deploy mon-pod systemd unit file 
+  ansible.builtin.template:
+    src: mon-pod.service.j2
+    dest: '{{ monitoring_systemd_unit_file }}'
+    mode: '0644'
+  notify: 
+    - Reload systemd
+    - Enable monitoring services
+    - Restart mon-pod service 
+
 - name: Deploy prometheus systemd unit file 
   ansible.builtin.template:
     src: prometheus.service.j2
     dest: '{{ prometheus_systemd_unit_file }}'
     mode: '0644'
-  notify: Restart prometheus service 
+  notify:
+    - Reload systemd
+    - Enable monitoring services
+    - Restart prometheus service 
+
+- name: Deploy thanos systemd unit file 
+  ansible.builtin.template:
+    src: thanos.service.j2
+    dest: '{{ thanos_systemd_unit_file }}'
+    mode: '0644'
+  notify: 
+    - Reload systemd
+    - Enable monitoring services
+    - Restart thanos service 
 
 - name: Deploy alertmanager systemd unit file 
   ansible.builtin.template:
     src: alertmanager.service.j2
     dest: '{{ alertmanager_systemd_unit_file }}'
     mode: '0644'
-  notify: Restart prometheus service 
+  notify: 
+    - Reload systemd
+    - Enable monitoring services
+    - Restart prometheus service 
+
+- name: Deploy thanos store systemd unit file 
+  ansible.builtin.template:
+    src: thanos-store.service.j2
+    dest: '{{ thanos_store_systemd_unit_file }}'
+    mode: '0644'
+  notify:
+    - Reload systemd
+    - Enable monitoring services
+    - Restart thanos store service
+
+- name: Deploy thanos query systemd unit file 
+  ansible.builtin.template:
+    src: thanos-query.service.j2
+    dest: '{{ thanos_query_systemd_unit_file }}'
+    mode: '0644'
+  notify:
+    - Reload systemd
+    - Enable monitoring services
+    - Restart thanos query service
+
+- name: Deploy thanos compactor systemd unit file 
+  ansible.builtin.template:
+    src: thanos-compactor.service.j2
+    dest: '{{ thanos_compactor_systemd_unit_file }}'
+    mode: '0644'
+  notify:
+    - Reload systemd
+    - Enable monitoring services
+    - Restart thanos compactor service
 
 - name: Deploy grafana systemd unit file 
   ansible.builtin.template:
     src: grafana.service.j2
     dest: '{{ grafana_systemd_unit_file }}'
     mode: '0644'
-  notify: Restart grafana service 
+  notify:
+    - Reload systemd
+    - Enable monitoring services
+    - Restart grafana service 
 
 - name: Deploy prometheus configuration 
   ansible.builtin.template:
@@ -42,7 +118,10 @@
     src: node-exporter.service.j2
     dest: '{{ node_exporter_systemd_unit_file }}'
     mode: '0644'
-  notify: Restart node-exporter service 
+  notify:
+    - Reload systemd
+    - Enable monitoring services
+    - Restart node-exporter service 
   tags:
     - node_exporter 
 
