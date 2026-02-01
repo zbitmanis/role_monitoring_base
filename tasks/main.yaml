@@ -185,4 +185,3 @@
   loop:
     '{{ prometheus_rules }}'
   notify: Restart prometheus service
-

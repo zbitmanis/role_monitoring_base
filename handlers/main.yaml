@@ -20,60 +20,9 @@
     state: restarted
     enabled: true
 
-- name: Restart thanos service
-  ansible.builtin.systemd:
-    name: thanos
-    daemon_reload: true
-    state: restarted
-    enabled: true
-
-- name: Restart thanos store service
-  ansible.builtin.systemd:
-    name: thanos-store
-    daemon_reload: true
-    state: restarted
-    enabled: true
-
-- name: Restart thanos query service
-  ansible.builtin.systemd:
-    name: thanos-query
-    daemon_reload: true
-    state: restarted
-    enabled: true
-
-- name: Restart mon-pod service
-  ansible.builtin.systemd:
-    name: mon-pod
-    daemon_reload: true
-    state: started
-
-- name: Restart thanos compactor service
-  ansible.builtin.systemd:
-    name: thanos-compactor
-    daemon_reload: true
-    state: started
-
 - name: Restart node-exporter service
   ansible.builtin.systemd:
     name: node-exporter
     daemon_reload: true
     state: restarted
     enabled: true
-
-- name: Reload systemd
-  systemd:
-    daemon_reload: yes
-
-- name: Enable monitoring services
-  systemd:
-    name: "{{ item }}"
-    enabled: yes
-    state: started
-  loop:
-    - mon-pod.service
-    - prometheus.service
-    - thanos.service
-    - thanos-store.service
-    - thanos-query.service
-    - thanos-compactor.service
-    - node-exporter.service

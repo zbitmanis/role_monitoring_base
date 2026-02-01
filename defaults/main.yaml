@@ -15,9 +15,6 @@ grafana_provisioning_dashboard_folder: /var/lib/grafana/dashboards
 grafana_dashboards_folder: /grafana/dashboards 
 grafana_provisioning_dashboard_files:
     - node-exporter-full.json
-    - viessman-gas-boiler.json
-monitoring_pod: 'mon'
-monitoring_systemd_unit_file: /etc/systemd/system/mon-pod.service
 prometheus_install_files_path: /var/tmp/prometheus-install
 prometheus_dir: /var/prometheus
 prometheus_config_dir: /etc/prometheus
