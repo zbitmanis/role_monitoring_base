@@ -1,0 +1,33 @@
+# container-prometheus.service
+
+[Unit]
+Description=thanos-sidecar
+Documentation=https://thanos.io
+Wants=network-online.target
+#After=network-online.target
+After=mon-pod.service
+Requires=mon-pod.service
+RequiresMountsFor=%t/containers
+
+[Service]
+Environment=MON_POD={{ monitoring_pod }}
+Environment=PODMAN_SYSTEMD_UNIT=%n
+Environment=PROM_DIR={{ prometheus_dir }}
+Environment=THAN_CONFIG_DIR={{ thanos_config_dir }}
+Environment=THAN_RELEASE={{ thanos_release }}
+Environment=PROM_UID={{ prometheus_uid }}
+Environment=PROM_UID={{ prometheus_uid }}
+Environment=THAN_OBJ_FILE={{ thanos_objstore_file }}
+
+Restart=on-failure
+TimeoutStopSec=70
+ExecStartPre=/bin/rm -f %t/%n.ctr-id
+ExecStart=/usr/bin/podman run --cidfile=%t/%n.ctr-id --cgroups=no-conmon  --rm --sdnotify=conmon --replace  --user ${PROM_UID} -d -v ${PROM_DIR}:/prometheus -v ${THAN_CONFIG_DIR}:${THAN_CONFIG_DIR}  --name thanos-sidecar --pod ${MON_POD} quay.io/thanos/thanos:${THAN_RELEASE} sidecar --tsdb.path=/prometheus --prometheus.url=http://127.0.0.1:9090 --objstore.config-file=${THAN_OBJ_FILE} --http-address=0.0.0.0:19191 --grpc-address=0.0.0.0:19090
+
+ExecStop=/usr/bin/podman stop --ignore --cidfile=%t/%n.ctr-id
+ExecStopPost=/usr/bin/podman rm -f --ignore --cidfile=%t/%n.ctr-id
+Type=notify
+NotifyAccess=all
+
+[Install]
+WantedBy=default.target

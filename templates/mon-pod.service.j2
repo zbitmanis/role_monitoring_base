@@ -1,0 +1,22 @@
+# container-prometheus.service
+
+[Unit]
+Description=Podman pod for prometheus and thanos sidecar
+Documentation=https://thanos.io
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+
+Environment=MON_POD={{ monitoring_pod }}
+
+Restart=on-failure
+TimeoutStopSec=70
+ExecStart=/usr/bin/podman pod start ${MON_POD}
+
+ExecStop=/usr/bin/podman pod stop -t 10 ${MON_POD} 
+
+[Install]
+WantedBy=default.target

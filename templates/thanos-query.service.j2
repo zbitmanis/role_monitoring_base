@@ -1,0 +1,31 @@
+# container-prometheus.service
+
+[Unit]
+Description=Thanos Query
+Documentation=https://thanos.io
+Wants=network-online.target
+After=network-online.target
+RequiresMountsFor=%t/containers
+
+[Service]
+Environment=MON_POD={{ monitoring_pod }}
+Environment=PODMAN_SYSTEMD_UNIT=%n
+Environment=THAN_DATA_DIR={{ thanos_data_dir }}
+Environment=THAN_CONFIG_DIR={{ thanos_config_dir }}
+Environment=THAN_RELEASE={{ thanos_release }}
+Environment=PROM_UID={{ prometheus_uid }}
+Environment=PROM_UID={{ prometheus_uid }}
+Environment=THAN_OBJ_FILE={{ thanos_objstore_file }}
+
+Restart=on-failure
+TimeoutStopSec=70
+ExecStartPre=/bin/rm -f %t/%n.ctr-id
+ExecStart=/usr/bin/podman run --cidfile=%t/%n.ctr-id --cgroups=no-conmon  --rm --sdnotify=conmon --replace  --user ${PROM_UID} -p 9091:9090  -p 10903:10901 -d  --name thanos-query quay.io/thanos/thanos:${THAN_RELEASE} query  --http-address=0.0.0.0:9090 --query.replica-label=replica  --grpc-address=0.0.0.0:19090 --store={{ monitoring_node_ip }}:10901 --store={{ monitoring_node_ip }}:19090 
+
+ExecStop=/usr/bin/podman stop --ignore --cidfile=%t/%n.ctr-id
+ExecStopPost=/usr/bin/podman rm -f --ignore --cidfile=%t/%n.ctr-id
+Type=notify
+NotifyAccess=all
+
+[Install]
+WantedBy=default.target

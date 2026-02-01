@@ -1,0 +1,10 @@
+type: S3
+config:
+  bucket: {{ thanos_s3_bucket }}
+  endpoint: 's3.amazonaws.com'
+  region: 'eu-central-1'
+  access_key: {{ thanos_aws_access_key }} 
+  secret_key: {{ thanos_aws_access_secret }}
+  sse_config:
+    type: SSE-S3
+
