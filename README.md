@@ -1,12 +1,26 @@
-# Ansible Role: etcd
+# Ansible Role: monitoring_base
 
 ## Overview
-The `etcd` Ansible role automates the deployment and configuration of an etcd cluster using Podman. This role sets up systemd services, configures TLS, and defines cluster membership.
+
+The `monitoring_base` Ansible role automates the deployment and configuration of a complete monitoring stack using Podman and systemd.
+
+This role installs and configures:
+
+- Prometheus (metrics collection)
+- Thanos (long-term storage & query layer)
+- Grafana (visualization)
+- Alertmanager (alert routing)
+- Node Exporter (host metrics)
+
+It supports TLS, S3-backed long-term storage, automatic Grafana provisioning, and full systemd service management.
+
+---
 
 ## File Structure
+
 ```
 roles/
-└── etcd/
+└── monitoring_base/
     ├── tasks/
     │   └── main.yaml
     ├── defaults/
@@ -14,106 +28,251 @@ roles/
     ├── handlers/
     │   └── main.yaml
     └── templates/
-        └── etcd.service.j2
+        ├── prometheus.service.j2
+        ├── alertmanager.service.j2
+        ├── grafana.service.j2
+        ├── thanos.service.j2
+        ├── thanos-store.service.j2
+        ├── thanos-query.service.j2
+        ├── thanos-compactor.service.j2
+        ├── mon-pod.service.j2
+        ├── node-exporter.service.j2
+        ├── prometheus.yml.j2
+        ├── alertmanager.yml.j2
+        ├── grafana.ini.j2
+        └── objstore.yml.j2
 ```
+
+---
 
 ## Tasks
+
 ### main.yaml
 
-### 1. Gather the IP address of the etcd interface
+### 1. Gather the IP address of monitoring interface
+
 ```yaml
-- name: Gather the ip address of etcd interface
+- name: Gather the ip address of monitoring interface
   ansible.builtin.set_fact:
-    etcd_node_ip:  '{{ ansible_facts[etcd_node_iface].ipv4.address }}'
+    monitoring_node_ip: "{{ ansible_facts[monitoring_node_iface].ipv4.address }}"
 ```
-**Purpose:**
-- Retrieves the IP address of the network interface specified by `etcd_node_iface`.
-- Stores the IP address in the `etcd_node_ip` variable for later use.
 
-### 2. Deploy etcd systemd unit file
+**Purpose:**
+
+- Retrieves the IP address of the interface defined by `monitoring_node_iface`.
+- Stores it in `monitoring_node_ip` for configuration templates.
+
+---
+
+### 2. Create Podman pod
+
 ```yaml
-- name: Deploy etcd systemd unit file
+- name: Create podman pod for prometheus and thanos
+  containers.podman.podman_pod:
+    name: "{{ monitoring_pod }}"
+    state: created
+```
+
+**Purpose:**
+
+- Creates a Podman pod (`mon`) for Prometheus and Thanos components.
+
+---
+
+### 3. Deploy systemd unit files
+
+Each service is deployed using Jinja2 templates and triggers handlers on change:
+
+Example:
+
+```yaml
+- name: Deploy prometheus systemd unit file
   ansible.builtin.template:
-    src: etcd.service.j2
-    dest: '{{ etcd_systemd_unit_file }}'
-    mode: '0644'
-  notify: Restart etcd service
+    src: prometheus.service.j2
+    dest: "{{ prometheus_systemd_unit_file }}"
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Enable monitoring services
+    - Restart prometheus service
 ```
-**Purpose:**
-- Uses a Jinja2 template (`etcd.service.j2`) to generate the etcd systemd unit file.
-- The file is saved to the path specified by `etcd_systemd_unit_file`.
-- Sets permissions to `0644`.
-- Triggers a handler to restart the etcd service if changes are made.
 
-### 3. Ensure the Podman service is running
-```yaml
-- name: Ensure the podman service is running
-  ansible.builtin.systemd:
-    name: podman
-    state: started
-    enabled: true
-```
 **Purpose:**
-- Starts and enables the Podman service to ensure containers can run.
+
+- Installs systemd service units.
+- Reloads systemd if changed.
+- Ensures services are enabled and restarted when necessary.
+
+---
+
+### 4. Deploy configuration files
+
+- Prometheus configuration
+- Alertmanager configuration
+- Grafana configuration
+- Thanos object storage configuration
+- Grafana provisioning (datasources and dashboards)
+
+Templates are rendered using default and overridden variables.
+
+---
+
+## Services Managed
+
+- mon-pod
+- prometheus
+- alertmanager
+- grafana
+- thanos
+- thanos-store
+- thanos-query
+- thanos-compactor
+- node-exporter
+
+All services:
+
+- Are enabled on boot
+- Restart automatically when configuration changes
+- Run under dedicated system users
+
+---
 
 ## Variables
 
-### Paths
-| Variable                  | Description                          | Default Value              |
-|---------------------------|--------------------------------------|----------------------------|
-| `etcd_install_files_path` | Path for temporary installation files| `/var/tmp/etcd-install`     |
-| `etcd_data_dir`           | etcd data directory                  | `/var/lib/etcd`            |
-| `etcd_dir`                | etcd configuration directory         | `/var/etcd`                |
-| `etcd_tls_dir`            | etcd TLS directory                   | `/etc/etcd/tls`            |
-| `etcd_systemd_unit_file`  | Systemd unit file path for etcd      | `/etc/systemd/system/etcd.service` |
+### Prometheus
 
-### Security and TLS
-| Variable                      | Description                          | Default Value              |
-|-------------------------------|--------------------------------------|----------------------------|
-| `enable_tls`                  | Enables TLS for etcd communication   | `true`                     |
-| `etcd_protocol`               | Protocol used (http or https)        | Dynamic based on TLS       |
-| `etcd_ca_file`                | Path to CA certificate               | `${etcd_tls_dir}/etcd-ca.pem` |
-| `etcd_peer_trusted_ca_file`   | Path to peer trusted CA file         | `${etcd_tls_dir}/etcd-ca.pem` |
-| `etcd_cert_file`              | Path to etcd node certificate        | `${etcd_tls_dir}/etcd-node.pem` |
-| `etcd_key_file`               | Path to etcd node key file           | `${etcd_tls_dir}/etcd-node.key` |
-| `etcd_peer_cert_file`         | Path to etcd peer certificate        | `${etcd_tls_dir}/etcd-node.pem` |
-| `etcd_peer_key_file`          | Path to etcd peer key file           | `${etcd_tls_dir}/etcd-node.key` |
-| `etcd_peer_client_cert_auth`  | Enables client cert auth for peers   | `true`                     |
-| `etcd_client_cert_auth`       | Enables client cert auth             | `false`                    |
+| Variable | Default |
+|----------|---------|
+| `prometheus_release` | `v3.2.0` |
+| `prometheus_dir` | `/var/prometheus` |
+| `prometheus_config_dir` | `/etc/prometheus` |
+| `prometheus_enable_tls` | `true` |
+| `prometheus_storage_block_duration` | `2h` |
 
-### Cluster Configuration
-| Variable                  | Description                          | Default Value              |
-|---------------------------|--------------------------------------|----------------------------|
-| `etcd_nodes`              | List of etcd nodes with IPs          | See default list below     |
-| `etcd_node_idx`           | Index of current node in cluster     | `0`                        |
-| `etcd_node_iface`         | Network interface for etcd           | `eth1`                     |
-| `etcd_node_name`          | Current node's name                  | `${etcd_nodes[etcd_node_idx].name}` |
-| `etcd_cluster`            | Cluster membership string            | Built dynamically          |
+---
 
-**Default etcd nodes:**
-```yaml
-etcd_nodes:
-  - name: etcd-node-a
-    ipv4: 10.0.2.160
-  - name: etcd-node-b
-    ipv4: 10.0.2.237
-  - name: etcd-node-c
-    ipv4: 10.0.2.188
-```
+### Grafana
+
+| Variable | Default |
+|----------|---------|
+| `grafana_release` | `11.5.2` |
+| `grafana_dir` | `/var/lib/grafana` |
+| `grafana_config_dir` | `/etc/grafana` |
+| `grafana_admin_initial_password` | `{{ vault_grafana_admin_initial_password }}` |
+
+---
+
+### Alertmanager
+
+| Variable | Default |
+|----------|---------|
+| `alertmanager_release` | `v0.28.0` |
+| `alertmanager_dir` | `/var/lib/alertmanager` |
+| `monitoring_alertmanager_enabled` | `true` |
+
+---
+
+### Thanos
+
+| Variable | Default |
+|----------|---------|
+| `thanos_release` | `v0.35.1` |
+| `thanos_s3_bucket` | `rpi-thanos-metrics-s3-eu-central-1` |
+| `thanos_aws_access_key` | `{{ vault_thanos_aws_access_key }}` |
+| `thanos_aws_access_secret` | `{{ vault_thanos_aws_access_secret }}` |
+
+---
+
+### Node Exporter
+
+| Variable | Default |
+|----------|---------|
+| `node_exporter_release` | `v1.9.0` |
+
+---
 
 ## Handlers
-- **Restart etcd service** — Restarts the etcd systemd service when notified.
+
+- Reload systemd
+- Restart prometheus service
+- Restart alertmanager service
+- Restart grafana service
+- Restart thanos service
+- Restart thanos store service
+- Restart thanos query service
+- Restart thanos compactor service
+- Restart node-exporter service
+- Enable monitoring services
+
+Handlers ensure services are properly restarted and enabled after configuration changes.
+
+---
 
 ## Usage
-Include this role in your playbook:
+
+### 1. Install the role
+
+Using requirements.yml:
 
 ```yaml
-- name: Deploy etcd cluster
-  hosts: etcd_nodes
-  roles:
-    - etcd
+roles:
+  - name: monitoring_base
+    src: https://github.com/zbitmanis/role_monitoring_base.git
+    scm: git
 ```
 
-Ensure all necessary variables are defined in `group_vars` or `host_vars`.
+Install:
 
+```bash
+ansible-galaxy role install -r requirements.yml
+```
 
+---
+
+### 2. Define required Vault variables
+
+```bash
+ansible-vault create group_vars/monitoring/vault.yml
+```
+
+Example:
+
+```yaml
+vault_grafana_admin_initial_password: "StrongPassword"
+vault_thanos_aws_access_key: "ACCESS_KEY"
+vault_thanos_aws_access_secret: "SECRET_KEY"
+```
+
+---
+
+### 3. Example playbook
+
+```yaml
+- name: Deploy monitoring stack
+  hosts: monitoring
+  become: true
+  roles:
+    - monitoring_base
+```
+
+Run:
+
+```bash
+ansible-playbook -i inventory site.yml --ask-vault-pass
+```
+
+---
+
+## Access
+
+After deployment:
+
+- Prometheus → https://<host>:9090
+- Grafana → http://<host>:3000
+- Thanos Query → http://<host>:19090
+
+---
+
+## License
+
+MIT

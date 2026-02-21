@@ -27,4 +27,10 @@ rule_files:
 # A scrape configuration containing exactly one endpoint to scrape:
 # Here it's Prometheus itself.
 scrape_configs:
-  {{ prometheus_scrape_configs | to_nice_yaml(indent=2,sort_keys=False) | indent(2,False) }}
+  {{ prometheus_scrape_configs | to_nice_yaml(indent=2,sort_keys=False) | indent(2) }}
+{% for target in prometheus_target_dirs %}
+  - job_name:  {{ target.name }} 
+    file_sd_configs:
+        - files:
+           - {{ target.path }}/*.yaml
+{% endfor %}

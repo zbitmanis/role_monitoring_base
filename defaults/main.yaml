@@ -15,10 +15,24 @@ grafana_provisioning_dashboard_folder: /var/lib/grafana/dashboards
 grafana_dashboards_folder: /grafana/dashboards 
 grafana_provisioning_dashboard_files:
     - node-exporter-full.json
+    - viessman-gas-boiler.json
+monitoring_pod: 'mon'
+monitoring_systemd_unit_file: /etc/systemd/system/mon-pod.service
 prometheus_install_files_path: /var/tmp/prometheus-install
 prometheus_dir: /var/prometheus
 prometheus_config_dir: /etc/prometheus
 prometheus_tls_dir: /etc/prometheus/tls
+prometheus_target_dirs:
+  - path: '/etc/prometheus/targets/http'
+    group: prometheus
+    user: prometheus
+    mode: '755'
+    name: exporters-http
+  - path: '/etc/prometheus/targets/https'
+    group: prometheus
+    user: prometheus
+    mode: '755'
+    name: exporters-https
 prometheus_systemd_unit_file: /etc/systemd/system/prometheus.service
 alertmanager_systemd_unit_file: /etc/systemd/system/alertmanager.service
 prometheus_storage_block_duration: 2h
@@ -33,7 +47,7 @@ prometheus_enable_tls: true
 prometheus_rules: []
 prometheus_scrape_configs: [] 
 prometheus_protocol: '{% if prometheus_enable_tls %}https{% else %}http{% endif %}' 
-prometheus_ca_file: '{{ prometheus_tls_dir }}/etcd-ca.pem' 
+prometheus_ca_file: '{{ prometheus_tls_dir }}/prometheus-ca.pem' 
 prometheus_cert_file: '{{ prometheus_tls_dir }}/prometheus.pem' 
 prometheus_key_file: '{{ prometheus_tls_dir }}/prometheus.key' 
 prometheus_external_labels: 
